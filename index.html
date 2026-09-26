@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>가계부 · 투자일지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== 로그인 화면 (기본 노출, 로그인 성공 시 숨김) ===== -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <h1>가계부 · 투자일지</h1>
+    <p>Google 계정으로 로그인하면 내 데이터가 안전하게 저장되고<br>폰·PC 어디서 열어도 자동으로 동기화됩니다.</p>
+    <button id="loginBtn" class="btn login-btn" type="button">
+      <span class="g-ico">G</span>Google로 로그인
+    </button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-foot">로그인한 본인만 자신의 데이터에 접근할 수 있습니다.</div>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" hidden>
+
+  <header class="top">
+    <div class="brand">
+      <h1>가계부 · 투자일지</h1>
+      <span class="sync"><span class="dotc on" id="syncDot"></span><span id="syncTxt">이 기기에 저장</span></span>
+    </div>
+    <div class="authbox" id="authbox" hidden>
+      <span class="email" id="userEmail"></span>
+      <button id="logoutBtn" class="toggle" type="button">로그아웃</button>
+    </div>
+    <div class="fx">
+      <label>$1 =</label>
+      <input id="rate" class="num" inputmode="decimal"><span>원</span>
+      <button id="fxBtn" title="현재 환율 불러오기">⟳</button>
+      <span class="st" id="fxState"></span>
+    </div>
+  </header>
+
+  <!-- ===== 자산 현황 ===== -->
+  <section class="asset">
+    <div class="asset-head">
+      <div class="asset-title">
+        <span class="k">총자산</span>
+        <button id="setBtn" class="gear" title="시작 자산 · 목표 설정">⚙</button>
+      </div>
+      <div class="asset-total"><span class="krw num" id="aTotalK">₩0</span><span class="usd num" id="aTotalU">$0.00</span></div>
+    </div>
+
+    <div class="asset-grid">
+      <div class="acell"><span class="lab"><span class="dot" style="background:var(--cash)"></span>현금</span><span class="krw num" id="aCashK">₩0</span><span class="usd num" id="aCashU">$0.00</span></div>
+      <div class="acell"><span class="lab"><span class="dot" style="background:var(--save)"></span>적금</span><span class="krw num" id="aSaveK">₩0</span><span class="usd num" id="aSaveU">$0.00</span></div>
+      <div class="acell"><span class="lab"><span class="dot" style="background:var(--invest)"></span>투자</span><span class="krw num" id="aInvestK">₩0</span><span class="usd num" id="aInvestU">$0.00</span></div>
+    </div>
+
+    <div class="goal" id="goalWrap" hidden>
+      <div class="goal-top"><span>목표까지</span><span class="num" id="goalPct">0%</span></div>
+      <div class="gauge"><div class="gauge-fill" id="goalFill"></div></div>
+      <div class="goal-sub num" id="goalSub">₩0 / ₩0</div>
+    </div>
+
+    <!-- 설정 패널 -->
+    <div class="setpanel" id="setPanel" hidden>
+      <div class="setgrid">
+        <div class="f"><label>시작 현금 (₩)</label><input class="num" id="sCash" inputmode="decimal" placeholder="0"></div>
+        <div class="f"><label>시작 적금 (₩)</label><input class="num" id="sSave" inputmode="decimal" placeholder="0"></div>
+        <div class="f"><label>시작 투자 (₩)</label><input class="num" id="sInvest" inputmode="decimal" placeholder="0"></div>
+        <div class="f"><label>목표 금액 (₩)</label><input class="num" id="sGoal" inputmode="decimal" placeholder="0"></div>
+      </div>
+      <div class="setbtns">
+        <button class="btn ghost" id="setCancel" type="button">닫기</button>
+        <button class="btn" id="setSave" type="button">저장</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="gg">가계부</button>
+    <button class="tab" data-tab="iv">투자일지</button>
+  </div>
+
+  <!-- ===== 가계부 ===== -->
+  <div class="pane on" id="pane-gg">
+    <div class="period">
+      <select id="yearSel"></select>
+      <select id="monthSel"></select>
+      <button class="toggle" id="cumBtn">누적 보기</button>
+    </div>
+
+    <section class="ledger">
+      <div class="cap"><b id="ggCap">이번 달 요약</b><span id="ggSub"></span></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--income)"></span>수입</div><div class="krw num" id="inK">₩0</div><div class="usd num" id="inU">$0.00</div></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--expense)"></span>지출</div><div class="krw num" id="exK">₩0</div><div class="usd num" id="exU">$0.00</div></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금</div><div class="krw num" id="saK">₩0</div><div class="usd num" id="saU">$0.00</div></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자이체</div><div class="krw num" id="ivK">₩0</div><div class="usd num" id="ivU">$0.00</div></div>
+      <div class="lrow net"><div class="lab">잉여현금 <span class="hint">(수입−지출−적금−투자이체)</span></div><div class="krw num" id="netK">₩0</div><div class="usd num" id="netU">$0.00</div></div>
+    </section>
+
+    <section class="card">
+      <h2>거래 추가</h2>
+      <form id="ggForm">
+        <div class="f f-3"><label>날짜</label><input type="date" id="gDate" required></div>
+        <div class="f f-3"><label>유형</label><select id="gType"><option>수입</option><option>지출</option><option>적금</option><option>투자이체</option></select></div>
+        <div class="f f-3"><label id="gCatLab">분류</label><input id="gCat" placeholder="월급, 식비…"></div>
+        <div class="f f-3"><label>내용</label><input id="gMemo" placeholder="9월 급여 / 점심"></div>
+        <div class="f f-4"><label>금액</label><input class="num" id="gAmt" inputmode="decimal" placeholder="0" required></div>
+        <div class="f f-2"><label>통화</label><select id="gCur"><option value="KRW">원 ₩</option><option value="USD">달러 $</option></select></div>
+        <div class="f f-6 f-add"><button class="btn" type="submit">추가하기</button></div>
+      </form>
+    </section>
+
+    <div class="listhead"><h2 id="ggListTitle">거래 내역</h2><span class="cnt" id="ggCnt"></span></div>
+    <div class="tbl" id="ggList"></div>
+  </div>
+
+  <!-- ===== 투자일지 ===== -->
+  <div class="pane" id="pane-iv">
+    <section class="ledger" style="margin-top:16px">
+      <div class="cap"><b>투입 요약</b><span class="hint">가계부의 적금·투자이체가 자동으로 모입니다</span></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금 누적 투입</div><div class="krw num" id="tSaveK">₩0</div><div class="usd num" id="tSaveU">$0.00</div></div>
+      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자 누적 투입</div><div class="krw num" id="tInvK">₩0</div><div class="usd num" id="tInvU">$0.00</div></div>
+      <div class="lrow net"><div class="lab">총 투입액</div><div class="krw num" id="tAllK">₩0</div><div class="usd num" id="tAllU">$0.00</div></div>
+    </section>
+
+    <div class="listhead"><h2>적금 종류별 누적</h2><span class="cnt" id="kindCnt"></span></div>
+    <div class="tbl" id="kindTbl"></div>
+
+    <div class="listhead"><h2>투입 내역</h2><span class="cnt" id="ivCnt"></span></div>
+    <div class="tbl" id="ivList"></div>
+  </div>
+
+  <div class="foot">
+    데이터는 이 브라우저(localStorage)에 저장됩니다 · 서버·설치 없이 동작<br>
+    환율은 자동 조회를 시도하며, 실패 시 입력값을 사용합니다
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+
+<script type="module">
+  // ===== Firebase 연동 (Google 로그인 + Firestore 동기화) =====
+  // 실패/오프라인 시 8초 안에 초기화되지 않으면 로컬 저장 모드로 폴백합니다.
+  const loginScreen = document.getElementById('loginScreen');
+  const appRoot     = document.getElementById('appRoot');
+  const authbox     = document.getElementById('authbox');
+  const loginBtn    = document.getElementById('loginBtn');
+  const logoutBtn   = document.getElementById('logoutBtn');
+  const userEmailEl = document.getElementById('userEmail');
+  const loginErrEl  = document.getElementById('loginErr');
+  const syncDot     = document.getElementById('syncDot');
+  const syncTxt     = document.getElementById('syncTxt');
+
+  function showLogin() {
+    loginScreen.hidden = false;
+    appRoot.hidden = true;
+    authbox.hidden = true;
+  }
+  function showApp() {
+    loginScreen.hidden = true;
+    appRoot.hidden = false;
+  }
+  function goLocalMode() {
+    clearTimeout(bootTimer);
+    showApp();
+    authbox.hidden = true;
+    syncDot.classList.remove('on');
+    syncTxt.textContent = '이 기기에 저장 (로컬 모드)';
+  }
+
+  const bootTimer = setTimeout(goLocalMode, 8000);
+
+  (async () => {
+    try {
+      const [{ initializeApp }, authMod, fsMod] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js'),
+        import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js'),
+      ]);
+      const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = authMod;
+      const { getFirestore, doc, getDoc, setDoc, onSnapshot } = fsMod;
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyA9Y8J_RDpFYAKvgmt-AqXLpYypiZ31iYY",
+        authDomain: "investment-78251.firebaseapp.com",
+        projectId: "investment-78251",
+        storageBucket: "investment-78251.firebasestorage.app",
+        messagingSenderId: "590540332245",
+        appId: "1:590540332245:web:618bc760f33d8ac1ce165c",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+
+      let applying = false;   // 원격 스냅샷을 로컬에 반영 중 (에코 방지)
+      let saveTimer = null;   // 저장 디바운스 타이머
+      let unsubSnap = null;   // 현재 구독 해제 함수
+
+      loginBtn.addEventListener('click', async () => {
+        loginErrEl.textContent = '';
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (e) {
+          loginErrEl.textContent = '로그인에 실패했습니다: ' + (e && e.message ? e.message : e);
+        }
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        try { await signOut(auth); } catch {}
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        clearTimeout(bootTimer); // 인증 상태가 최초로 확인됨 → 안전장치 해제
+
+        if (unsubSnap) { unsubSnap(); unsubSnap = null; }
+
+        if (!user) {
+          window.gbStore = null;
+          showLogin();
+          return;
+        }
+
+        userEmailEl.textContent = user.email || '';
+        authbox.hidden = false;
+        syncDot.classList.add('on');
+        syncTxt.textContent = '클라우드 동기화됨';
+        showApp();
+
+        const ref = doc(db, 'users', user.uid);
+
+        // 다른 기기에서 바뀐 내용을 실시간 반영
+        unsubSnap = onSnapshot(ref, (snap) => {
+          if (!snap.exists()) return;
+          applying = true;
+          try {
+            if (typeof window.gbReceive === 'function') window.gbReceive(snap.data());
+          } finally {
+            applying = false;
+          }
+        }, (err) => {
+          console.warn('Firestore 구독 실패:', err);
+        });
+
+        // 최초 로그인 시 원격 문서가 없으면 로컬 데이터를 한 번 업로드(마이그레이션)
+        getDoc(ref).then((snap) => {
+          if (!snap.exists() && typeof window.gbSnapshot === 'function') {
+            setDoc(ref, window.gbSnapshot(), { merge: true }).catch((e) => {
+              console.warn('초기 업로드 실패:', e);
+            });
+          }
+        });
+
+        window.gbStore = {
+          save(payload) {
+            if (applying) return; // 원격 반영 중 저장 트리거 방지 (에코 루프 차단)
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+              setDoc(ref, payload, { merge: true }).catch((e) => {
+                console.warn('저장 실패:', e);
+              });
+            }, 400);
+          },
+        };
+      });
+    } catch (e) {
+      console.warn('Firebase 로드 실패, 로컬 모드로 전환:', e);
+      goLocalMode();
+    }
+  })();
+</script>
+</body>
+</html>
