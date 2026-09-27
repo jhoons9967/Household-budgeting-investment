@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>가계부 · 투자일지</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -43,96 +44,239 @@
     </div>
   </header>
 
-  <!-- ===== 자산 현황 ===== -->
-  <section class="asset">
-    <div class="asset-head">
-      <div class="asset-title">
-        <span class="k">총자산</span>
-        <button id="setBtn" class="gear" title="시작 자산 · 목표 설정">⚙</button>
-      </div>
-      <div class="asset-total"><span class="krw num" id="aTotalK">₩0</span><span class="usd num" id="aTotalU">$0.00</span></div>
-    </div>
-
-    <div class="asset-grid">
-      <div class="acell"><span class="lab"><span class="dot" style="background:var(--cash)"></span>현금</span><span class="krw num" id="aCashK">₩0</span><span class="usd num" id="aCashU">$0.00</span></div>
-      <div class="acell"><span class="lab"><span class="dot" style="background:var(--save)"></span>적금</span><span class="krw num" id="aSaveK">₩0</span><span class="usd num" id="aSaveU">$0.00</span></div>
-      <div class="acell"><span class="lab"><span class="dot" style="background:var(--invest)"></span>투자</span><span class="krw num" id="aInvestK">₩0</span><span class="usd num" id="aInvestU">$0.00</span></div>
-    </div>
-
-    <div class="goal" id="goalWrap" hidden>
-      <div class="goal-top"><span>목표까지</span><span class="num" id="goalPct">0%</span></div>
-      <div class="gauge"><div class="gauge-fill" id="goalFill"></div></div>
-      <div class="goal-sub num" id="goalSub">₩0 / ₩0</div>
-    </div>
-
-    <!-- 설정 패널 -->
-    <div class="setpanel" id="setPanel" hidden>
-      <div class="setgrid">
-        <div class="f"><label>시작 현금 (₩)</label><input class="num" id="sCash" inputmode="decimal" placeholder="0"></div>
-        <div class="f"><label>시작 적금 (₩)</label><input class="num" id="sSave" inputmode="decimal" placeholder="0"></div>
-        <div class="f"><label>시작 투자 (₩)</label><input class="num" id="sInvest" inputmode="decimal" placeholder="0"></div>
-        <div class="f"><label>목표 금액 (₩)</label><input class="num" id="sGoal" inputmode="decimal" placeholder="0"></div>
-      </div>
-      <div class="setbtns">
-        <button class="btn ghost" id="setCancel" type="button">닫기</button>
-        <button class="btn" id="setSave" type="button">저장</button>
-      </div>
-    </div>
-  </section>
-
   <div class="tabs">
-    <button class="tab on" data-tab="gg">가계부</button>
-    <button class="tab" data-tab="iv">투자일지</button>
+    <button class="tab on" data-tab="dash" type="button">대시보드</button>
+    <button class="tab" data-tab="detail" type="button">투자일지 상세</button>
+    <button class="tab" data-tab="loan" type="button">대출</button>
   </div>
 
-  <!-- ===== 가계부 ===== -->
-  <div class="pane on" id="pane-gg">
-    <div class="period">
-      <select id="yearSel"></select>
-      <select id="monthSel"></select>
-      <button class="toggle" id="cumBtn">누적 보기</button>
+  <!-- ===== 대시보드 (자산 현황 + 가계부 | 투자일지 요약) ===== -->
+  <div class="pane on" id="pane-dash">
+
+    <!-- ===== 자산 현황 ===== -->
+    <section class="asset">
+      <div class="asset-head">
+        <div class="asset-title">
+          <span class="k">총자산</span>
+          <button id="setBtn" class="gear" title="시작 자산 · 목표 설정 접기/펴기">⚙</button>
+        </div>
+        <div class="asset-total"><span class="krw num" id="aTotalK">₩0</span><span class="usd num" id="aTotalU">$0.00</span></div>
+      </div>
+
+      <div class="asset-grid">
+        <div class="acell"><span class="lab"><span class="dot" style="background:var(--cash)"></span>현금</span><span class="krw num" id="aCashK">₩0</span><span class="usd num" id="aCashU">$0.00</span></div>
+        <div class="acell"><span class="lab"><span class="dot" style="background:var(--save)"></span>적금</span><span class="krw num" id="aSaveK">₩0</span><span class="usd num" id="aSaveU">$0.00</span></div>
+        <div class="acell acell-invest">
+          <span class="lab"><span class="dot" style="background:var(--invest)"></span>투자<button type="button" id="investToggle" class="acc-toggle" title="계좌·종목별 보기">▸</button></span>
+          <span class="krw num" id="aInvestK">₩0</span><span class="usd num" id="aInvestU">$0.00</span>
+        </div>
+        <div class="acell"><span class="lab"><span class="dot" style="background:var(--deposit)"></span>보증금</span><span class="krw num" id="aDepositK">₩0</span><span class="usd num" id="aDepositU">$0.00</span></div>
+      </div>
+
+      <!-- 투자 = 계좌 예수금 + 보유 종목 평가금액 (자동계산) 아코디언 -->
+      <div class="invest-accordion" id="investAccordion" hidden></div>
+
+      <div class="goal" id="goalWrap" hidden>
+        <div class="goal-top"><span>목표까지</span><span class="num" id="goalPct">0%</span></div>
+        <div class="gauge"><div class="gauge-fill" id="goalFill"></div></div>
+        <div class="goal-sub num" id="goalSub">₩0 / ₩0</div>
+      </div>
+
+      <!-- 설정 패널: 기본 펼침, ⚙ 버튼으로 접기/펴기 -->
+      <div class="setpanel" id="setPanel">
+        <div class="setsub">시작 자산 · 목표 <span class="hint">원(₩) 또는 달러($) 중 편한 쪽에 입력 — 환율로 자동 환산됩니다</span></div>
+        <div class="setgrid">
+          <div class="f fp">
+            <label>시작 현금</label>
+            <div class="fp-row">
+              <div class="fp-cur"><span>₩ 원</span><input class="num" id="sCashKRW" inputmode="decimal" placeholder="0"></div>
+              <div class="fp-cur"><span>$ 달러</span><input class="num" id="sCashUSD" inputmode="decimal" placeholder="0"></div>
+            </div>
+          </div>
+          <div class="f fp">
+            <label>시작 적금</label>
+            <div class="fp-row">
+              <div class="fp-cur"><span>₩ 원</span><input class="num" id="sSaveKRW" inputmode="decimal" placeholder="0"></div>
+              <div class="fp-cur"><span>$ 달러</span><input class="num" id="sSaveUSD" inputmode="decimal" placeholder="0"></div>
+            </div>
+          </div>
+          <div class="f fp">
+            <label>보증금</label>
+            <div class="fp-row">
+              <div class="fp-cur"><span>₩ 원</span><input class="num" id="sDepositKRW" inputmode="decimal" placeholder="0"></div>
+              <div class="fp-cur"><span>$ 달러</span><input class="num" id="sDepositUSD" inputmode="decimal" placeholder="0"></div>
+            </div>
+          </div>
+          <div class="f fp">
+            <label>목표 금액</label>
+            <div class="fp-row">
+              <div class="fp-cur"><span>₩ 원</span><input class="num" id="sGoalKRW" inputmode="decimal" placeholder="0"></div>
+              <div class="fp-cur"><span>$ 달러</span><input class="num" id="sGoalUSD" inputmode="decimal" placeholder="0"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint" style="display:block;margin-top:14px;">투자 자산은 '투자일지 상세'의 계좌·보유 종목으로 자동 계산되고, 대출(마이너스 통장)은 '대출' 탭에서 관리합니다.</div>
+
+        <div class="setbtns">
+          <button class="btn ghost" id="setCancel" type="button">닫기</button>
+          <button class="btn" id="setSave" type="button">저장</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 가계부 | 투자일지 (반반) ===== -->
+    <div class="board">
+
+      <!-- 가계부 -->
+      <section class="board-col" id="col-gg">
+        <h2 class="col-title">가계부</h2>
+
+        <div class="period">
+          <select id="yearSel"></select>
+          <select id="monthSel"></select>
+          <button class="toggle" id="cumBtn">누적 보기</button>
+        </div>
+
+        <section class="ledger">
+          <div class="cap"><b id="ggCap">이번 달 요약</b><span id="ggSub"></span></div>
+          <div class="lrow"><div class="lab"><span class="dot" style="background:var(--income)"></span>수입</div><div class="krw num" id="inK">₩0</div><div class="usd num" id="inU">$0.00</div></div>
+          <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금</div><div class="krw num" id="saK">₩0</div><div class="usd num" id="saU">$0.00</div></div>
+          <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자이체</div><div class="krw num" id="ivK">₩0</div><div class="usd num" id="ivU">$0.00</div></div>
+          <div class="lrow net"><div class="lab">잉여현금 <span class="hint">(수입−적금−투자이체)</span></div><div class="krw num" id="netK">₩0</div><div class="usd num" id="netU">$0.00</div></div>
+        </section>
+
+        <section class="card">
+          <h2>거래 추가</h2>
+          <form id="ggForm">
+            <div class="f f-3"><label>날짜</label><input type="date" id="gDate" required></div>
+            <div class="f f-3"><label>유형</label><select id="gType"><option>수입</option><option>적금</option><option>투자이체</option></select></div>
+            <div class="f f-3"><label id="gCatLab">분류</label><input id="gCat" placeholder="월급, 용돈…"></div>
+            <div class="f f-3"><label>내용</label><input id="gMemo" placeholder="9월 급여"></div>
+            <div class="f f-4"><label>금액</label><div class="amt-field"><span class="amt-prefix" id="gAmtPrefix">₩</span><input class="num" id="gAmt" inputmode="decimal" placeholder="0" required></div></div>
+            <div class="f f-2"><label>통화</label><select id="gCur"><option value="KRW">원 ₩</option><option value="USD">달러 $</option></select></div>
+            <div class="f f-6 f-add"><button class="btn" type="submit">추가하기</button></div>
+          </form>
+        </section>
+
+        <div class="dash-list">
+          <div class="listhead"><h2 id="ggListTitle">거래 내역</h2><span class="cnt" id="ggCnt"></span></div>
+          <div class="tbl" id="ggList"></div>
+        </div>
+      </section>
+
+      <!-- 투자일지 (요약) -->
+      <section class="board-col" id="col-iv">
+        <h2 class="col-title">투자일지</h2>
+
+        <section class="ledger">
+          <div class="cap"><b>평가손익 · 순이익</b><span class="hint">계좌·종목은 '투자일지 상세'에서 관리</span></div>
+          <div class="lrow"><div class="lab">보유 종목 평가금액</div><div class="krw num" id="pnlValK">₩0</div><div class="usd num" id="pnlValU">$0.00</div></div>
+          <div class="lrow"><div class="lab">평가손익</div><div class="krw num" id="pnlGainK">₩0</div><div class="usd num" id="pnlGainU">$0.00</div></div>
+          <div class="lrow"><div class="lab">수익률</div><div class="krw num" id="pnlRoi">0.00%</div><div class="usd num"></div></div>
+          <div class="lrow"><div class="lab">실현손익 <span class="hint">(매도 확정)</span></div><div class="krw num" id="pnlRealK">₩0</div><div class="usd num" id="pnlRealU">$0.00</div></div>
+          <div class="lrow"><div class="lab">대출 누적이자 <span class="hint">(대출 탭 합계)</span></div><div class="krw num" id="pnlIntK">₩0</div><div class="usd num" id="pnlIntU">$0.00</div></div>
+          <div class="lrow net"><div class="lab">순이익 <span class="hint">(평가손익+실현손익−누적이자)</span></div><div class="krw num" id="pnlNetK">₩0</div><div class="usd num" id="pnlNetU">$0.00</div></div>
+        </section>
+
+        <section class="ledger">
+          <div class="cap"><b>투입 요약</b><span class="hint">참고용 · 가계부 적금·투자이체 누적 (투자 자산 계산엔 미반영)</span></div>
+          <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금 누적 투입</div><div class="krw num" id="tSaveK">₩0</div><div class="usd num" id="tSaveU">$0.00</div></div>
+          <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자 누적 투입</div><div class="krw num" id="tInvK">₩0</div><div class="usd num" id="tInvU">$0.00</div></div>
+          <div class="lrow net"><div class="lab">총 투입액</div><div class="krw num" id="tAllK">₩0</div><div class="usd num" id="tAllU">$0.00</div></div>
+        </section>
+      </section>
+
     </div>
-
-    <section class="ledger">
-      <div class="cap"><b id="ggCap">이번 달 요약</b><span id="ggSub"></span></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--income)"></span>수입</div><div class="krw num" id="inK">₩0</div><div class="usd num" id="inU">$0.00</div></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--expense)"></span>지출</div><div class="krw num" id="exK">₩0</div><div class="usd num" id="exU">$0.00</div></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금</div><div class="krw num" id="saK">₩0</div><div class="usd num" id="saU">$0.00</div></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자이체</div><div class="krw num" id="ivK">₩0</div><div class="usd num" id="ivU">$0.00</div></div>
-      <div class="lrow net"><div class="lab">잉여현금 <span class="hint">(수입−지출−적금−투자이체)</span></div><div class="krw num" id="netK">₩0</div><div class="usd num" id="netU">$0.00</div></div>
-    </section>
-
-    <section class="card">
-      <h2>거래 추가</h2>
-      <form id="ggForm">
-        <div class="f f-3"><label>날짜</label><input type="date" id="gDate" required></div>
-        <div class="f f-3"><label>유형</label><select id="gType"><option>수입</option><option>지출</option><option>적금</option><option>투자이체</option></select></div>
-        <div class="f f-3"><label id="gCatLab">분류</label><input id="gCat" placeholder="월급, 식비…"></div>
-        <div class="f f-3"><label>내용</label><input id="gMemo" placeholder="9월 급여 / 점심"></div>
-        <div class="f f-4"><label>금액</label><input class="num" id="gAmt" inputmode="decimal" placeholder="0" required></div>
-        <div class="f f-2"><label>통화</label><select id="gCur"><option value="KRW">원 ₩</option><option value="USD">달러 $</option></select></div>
-        <div class="f f-6 f-add"><button class="btn" type="submit">추가하기</button></div>
-      </form>
-    </section>
-
-    <div class="listhead"><h2 id="ggListTitle">거래 내역</h2><span class="cnt" id="ggCnt"></span></div>
-    <div class="tbl" id="ggList"></div>
   </div>
 
-  <!-- ===== 투자일지 ===== -->
-  <div class="pane" id="pane-iv">
-    <section class="ledger" style="margin-top:16px">
-      <div class="cap"><b>투입 요약</b><span class="hint">가계부의 적금·투자이체가 자동으로 모입니다</span></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금 누적 투입</div><div class="krw num" id="tSaveK">₩0</div><div class="usd num" id="tSaveU">$0.00</div></div>
-      <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자 누적 투입</div><div class="krw num" id="tInvK">₩0</div><div class="usd num" id="tInvU">$0.00</div></div>
-      <div class="lrow net"><div class="lab">총 투입액</div><div class="krw num" id="tAllK">₩0</div><div class="usd num" id="tAllU">$0.00</div></div>
-    </section>
+  <!-- ===== 투자일지 상세 (탭) ===== -->
+  <div class="pane" id="pane-detail">
+    <div class="detail-inner">
+      <div class="pane-head"><h2>투자일지 상세</h2></div>
 
-    <div class="listhead"><h2>적금 종류별 누적</h2><span class="cnt" id="kindCnt"></span></div>
-    <div class="tbl" id="kindTbl"></div>
+      <section class="ledger">
+        <div class="cap"><b>평가손익 · 순이익</b><span class="hint">아래 계좌·보유 종목 기준으로 자동 계산</span></div>
+        <div class="lrow"><div class="lab">보유 종목 평가금액</div><div class="krw num" id="dPnlValK">₩0</div><div class="usd num" id="dPnlValU">$0.00</div></div>
+        <div class="lrow"><div class="lab">평가손익</div><div class="krw num" id="dPnlGainK">₩0</div><div class="usd num" id="dPnlGainU">$0.00</div></div>
+        <div class="lrow"><div class="lab">수익률</div><div class="krw num" id="dPnlRoi">0.00%</div><div class="usd num"></div></div>
+        <div class="lrow"><div class="lab">실현손익 <span class="hint">(매도 확정)</span></div><div class="krw num" id="dPnlRealK">₩0</div><div class="usd num" id="dPnlRealU">$0.00</div></div>
+        <div class="lrow"><div class="lab">대출 누적이자 <span class="hint">(대출 탭 합계)</span></div><div class="krw num" id="dPnlIntK">₩0</div><div class="usd num" id="dPnlIntU">$0.00</div></div>
+        <div class="lrow net"><div class="lab">순이익 <span class="hint">(평가손익+실현손익−누적이자)</span></div><div class="krw num hero-num" id="dPnlNetK">₩0</div><div class="usd num" id="dPnlNetU">$0.00</div></div>
+      </section>
 
-    <div class="listhead"><h2>투입 내역</h2><span class="cnt" id="ivCnt"></span></div>
-    <div class="tbl" id="ivList"></div>
+      <section class="ledger">
+        <div class="cap"><b>투입 요약</b><span class="hint">참고용 · 가계부 적금·투자이체 누적 (투자 자산 계산엔 미반영)</span></div>
+        <div class="lrow"><div class="lab"><span class="dot" style="background:var(--save)"></span>적금 누적 투입</div><div class="krw num" id="dSaveK">₩0</div><div class="usd num" id="dSaveU">$0.00</div></div>
+        <div class="lrow"><div class="lab"><span class="dot" style="background:var(--invest)"></span>투자 누적 투입</div><div class="krw num" id="dInvK">₩0</div><div class="usd num" id="dInvU">$0.00</div></div>
+        <div class="lrow net"><div class="lab">총 투입액</div><div class="krw num" id="dAllK">₩0</div><div class="usd num" id="dAllU">$0.00</div></div>
+      </section>
+
+      <section class="card">
+        <h2>계좌 추가</h2>
+        <form id="acctForm">
+          <div class="f f-5"><label>계좌명</label><input id="acName" placeholder="ISA, 연금저축, 국장, 미장…" required></div>
+          <div class="f f-3"><label>통화</label><select id="acCur"><option value="KRW">원 ₩</option><option value="USD">달러 $</option></select></div>
+          <div class="f f-4"><label>예수금</label><div class="amt-field"><span class="amt-prefix" id="acCashPrefix">₩</span><input class="num" id="acCash" inputmode="decimal" placeholder="0"></div></div>
+          <div class="f f-6 f-add"><button class="btn" type="submit">계좌 추가</button></div>
+        </form>
+      </section>
+
+      <div class="listhead"><h2>계좌 · 보유 종목</h2><span class="cnt" id="acctCnt"></span></div>
+      <div id="acctList"></div>
+
+      <section class="ledger">
+        <div class="cap"><b>실현손익 요약</b><span class="hint">종목을 종료(매도)하면 자동 반영</span></div>
+        <div class="lrow"><div class="lab">익절 누적</div><div class="krw num pos" id="rzWinK">₩0</div><div class="usd num pos" id="rzWinU">$0.00</div></div>
+        <div class="lrow"><div class="lab">손절 누적</div><div class="krw num neg" id="rzLoseK">₩0</div><div class="usd num neg" id="rzLoseU">$0.00</div></div>
+        <div class="lrow"><div class="lab">장기 누적</div><div class="krw num" id="rzLongK">₩0</div><div class="usd num" id="rzLongU">$0.00</div></div>
+        <div class="lrow"><div class="lab">단타 누적</div><div class="krw num" id="rzShortK">₩0</div><div class="usd num" id="rzShortU">$0.00</div></div>
+        <div class="lrow net"><div class="lab">순 실현손익</div><div class="krw num" id="rzNetK">₩0</div><div class="usd num" id="rzNetU">$0.00</div></div>
+      </section>
+
+      <div class="listhead"><h2>실현손익 기록</h2><span class="cnt" id="realizedCnt"></span></div>
+      <div class="tbl" id="realizedList"></div>
+
+      <div class="dash-kind">
+        <div class="listhead"><h2>적금 종류별 누적</h2><span class="cnt" id="kindCnt"></span></div>
+        <div class="tbl" id="kindTbl"></div>
+      </div>
+
+      <div class="dash-list">
+        <div class="listhead"><h2>투입 내역 <span class="hint">참고용 · 가계부 적금·투자이체</span></h2><span class="cnt" id="ivCnt"></span></div>
+        <div class="tbl" id="ivList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 대출 (마이너스 통장) ===== -->
+  <div class="pane" id="pane-loan">
+    <div class="detail-inner">
+      <div class="pane-head"><h2>대출 (마이너스 통장)</h2></div>
+
+      <section class="ledger">
+        <div class="cap"><b>대출 요약</b><span class="hint">이자는 매달 직접 기록</span></div>
+        <div class="lrow"><div class="lab"><span class="dot" style="background:var(--expense)"></span>총 사용액</div><div class="krw num" id="loanTotalK">₩0</div><div class="usd num" id="loanTotalU">$0.00</div></div>
+        <div class="lrow"><div class="lab">전체 누적 이자</div><div class="krw num" id="loanIntTotalK">₩0</div><div class="usd num" id="loanIntTotalU">$0.00</div></div>
+        <div class="lrow net"><div class="lab">순자산 <span class="hint">(총자산−총 사용액)</span></div><div class="krw num" id="loanNetK">₩0</div><div class="usd num" id="loanNetU">$0.00</div></div>
+      </section>
+
+      <section class="card">
+        <h2>마이너스 통장 추가</h2>
+        <form id="loanForm">
+          <div class="f f-4"><label>대출명</label><input id="lName" placeholder="OO은행 마이너스통장" required></div>
+          <div class="f f-2"><label>통화</label><select id="lCur"><option value="KRW">원 ₩</option><option value="USD">달러 $</option></select></div>
+          <div class="f f-3"><label>시작일</label><input type="date" id="lStart"></div>
+          <div class="f f-3"><label>만료일</label><input type="date" id="lEnd"></div>
+          <div class="f f-3"><label>현재 사용액</label><div class="amt-field"><span class="amt-prefix" id="lBalancePrefix">₩</span><input class="num" id="lBalance" inputmode="decimal" placeholder="0"></div></div>
+          <div class="f f-3"><label>연이율 (%) <span class="hint">참고용</span></label><input class="num" id="lRate" inputmode="decimal" placeholder="0"></div>
+          <div class="f f-6 f-add"><button class="btn" type="submit">통장 추가</button></div>
+        </form>
+      </section>
+
+      <div class="listhead"><h2>등록된 통장</h2><span class="cnt" id="loanCnt"></span></div>
+      <div id="loanList"></div>
+    </div>
   </div>
 
   <div class="foot">
