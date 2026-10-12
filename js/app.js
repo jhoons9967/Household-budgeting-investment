@@ -18,6 +18,7 @@ const LS = {
   accounts: 'gb.accounts',  // 투자 계좌 배열
   holdings: 'gb.holdings',  // 보유 종목 배열
   realized: 'gb.realized',  // 실현손익 기록 배열
+  updatedAt: 'gb.updatedAt', // 마지막 로컬 편집 시각 (원격 데이터 신선도 비교용)
 };
 
 const TYPES = ['수입', '적금', '투자이체'];
@@ -38,6 +39,7 @@ let interestLogs = load(LS.ilogs, []);     // { id, loanId, date(YYYY-MM), amoun
 let accounts = load(LS.accounts, []);      // { id, name, cur, cash }
 let holdings = load(LS.holdings, []);      // { id, accountId, name, avgPrice, qty, curPrice, category }
 let realized = load(LS.realized, []);      // { id, date, accountName, holdingName, cur, qty, sellPrice, avgPrice, pnl, result, category }
+let localUpdatedAt = Number(load(LS.updatedAt, 0)) || 0; // 이 기기의 마지막 편집 시각(ms)
 
 let view = { year: null, month: null, cum: false };
 let investOpen = false;         // 대시보드 '투자' 아코디언 전체 펼침 여부
@@ -52,7 +54,11 @@ function load(k, def) {
 function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
 
 // 로컬 저장 + (로그인 상태면) Firebase 동기화로 전달
+// localUpdatedAt을 매번 갱신해둬야, 아직 서버에 반영되지 않은 "이전" 원격 데이터가
+// 뒤늦게 도착해도 gbReceive에서 이를 감지하고 무시할 수 있다 (새로고침 시 데이터가
+// 사라지는 경합 상태 방지).
 function persist() {
+  localUpdatedAt = Date.now();
   save(LS.tx, txs);
   save(LS.set, setg);
   save(LS.rate, rate);
@@ -61,6 +67,7 @@ function persist() {
   save(LS.accounts, accounts);
   save(LS.holdings, holdings);
   save(LS.realized, realized);
+  save(LS.updatedAt, localUpdatedAt);
   if (window.gbStore && typeof window.gbStore.save === 'function') {
     window.gbStore.save(window.gbSnapshot());
   }
@@ -1012,6 +1019,7 @@ window.gbSnapshot = function gbSnapshot() {
     startDepositKRW: setg.startDepositKRW || 0, startDepositUSD: setg.startDepositUSD || 0,
     goalKRW: setg.goalKRW || 0, goalUSD: setg.goalUSD || 0,
     rate: rate,
+    updatedAt: localUpdatedAt,
   };
 };
 
@@ -1019,8 +1027,16 @@ window.gbSnapshot = function gbSnapshot() {
 // 기존에 저장된 대출 자동계산 필드(loanPrincipal 등)나 투자 시작값/평가금액 손입력
 // 필드(startInvestKRW·investValue 등)가 남아있어도 그냥 읽지 않고 무시하므로
 // 오류 없이 새 구조(loans/interestLogs, accounts/holdings/realized)로 넘어간다.
+//
+// 원격 데이터의 updatedAt이 이 기기의 마지막 편집 시각보다 더 오래됐으면 통째로 무시한다.
+// (예: 입력 직후 0.4초 디바운스가 서버에 반영되기 전에 새로고침/재로그인하면, 서버에는
+//  아직 '이전' 데이터만 있는 상태 — 이걸 받아서 방금 입력한 로컬 데이터를 덮어쓰는
+//  사고를 막는다. 서버 쓰기가 완료되면 같은/더 새 타임스탬프로 다시 도착해 정상 반영된다.)
 window.gbReceive = function gbReceive(remote) {
   if (!remote || typeof remote !== 'object') return;
+  const remoteUpdatedAt = +remote.updatedAt || 0;
+  if (remoteUpdatedAt < localUpdatedAt) return;
+  localUpdatedAt = remoteUpdatedAt;
   txs = Array.isArray(remote.items) ? remote.items : [];
   loans = Array.isArray(remote.loans) ? remote.loans : [];
   interestLogs = Array.isArray(remote.interestLogs) ? remote.interestLogs : [];
@@ -1042,6 +1058,7 @@ window.gbReceive = function gbReceive(remote) {
   save(LS.accounts, accounts);
   save(LS.holdings, holdings);
   save(LS.realized, realized);
+  save(LS.updatedAt, localUpdatedAt);
   const rateIn = $('#rate');
   if (rateIn) rateIn.value = rate;
   buildPeriodSelects();
